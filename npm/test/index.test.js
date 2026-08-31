@@ -46,6 +46,16 @@ test('blocks an over-threshold sale with a non-boolean tax claim', () => {
     assert.match(result.blocks[0], /Provide claimed_collects_tax/);
 });
 
+test('does not let the legacy fallback mask an invalid structured claim', () => {
+    const result = TaxPreFlight.audit({
+        ...overThresholdIntent('false'),
+        tax_decision: 'no_tax',
+    });
+
+    assert.equal(result.allowed, false);
+    assert.match(result.blocks[0], /Provide claimed_collects_tax/);
+});
+
 test('allows a below-threshold sale with a structured no-tax claim', () => {
     const result = TaxPreFlight.audit({
         ...overThresholdIntent(false),
@@ -65,4 +75,15 @@ test('does not treat a zero transaction threshold as crossed', () => {
 
     assert.equal(result.allowed, true);
     assert.deepEqual(result.blocks, []);
+});
+
+test('blocks an unknown state instead of treating it as verified', () => {
+    const result = TaxPreFlight.audit({
+        state: 'WA',
+        sales_data: { amount: 100, transactions: 0 },
+        claimed_collects_tax: false,
+    });
+
+    assert.equal(result.allowed, false);
+    assert.match(result.blocks[0], /not in configured nexus threshold table/);
 });

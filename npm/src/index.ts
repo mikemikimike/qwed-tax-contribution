@@ -27,8 +27,14 @@ export class NexusGuard {
     };
 
     static checkNexus(state: string, ytdSales: number, transactions: number = 0, claimedCollectsTax?: unknown): { verified: boolean; error?: string } {
-        const t = this.thresholds[state.toUpperCase()];
-        if (!t) return { verified: true }; // Unknown state, pass
+        const stateCode = state.toUpperCase();
+        const t = this.thresholds[stateCode];
+        if (!t) {
+            return {
+                verified: false,
+                error: `State ${stateCode} not in configured nexus threshold table. Cannot verify nexus liability — block pending rule configuration.`
+            };
+        }
 
         const hit = ytdSales >= t.amount || (t.transactions > 0 && transactions >= t.transactions);
         if (typeof claimedCollectsTax !== 'boolean') {
@@ -68,7 +74,8 @@ export class TaxPreFlight {
 
         // 2. Nexus
         if (intent.sales_data && intent.state) {
-            const claimedCollectsTax = typeof intent.claimed_collects_tax === 'boolean'
+            const hasStructuredClaim = Object.prototype.hasOwnProperty.call(intent, 'claimed_collects_tax');
+            const claimedCollectsTax = hasStructuredClaim
                 ? intent.claimed_collects_tax
                 : intent.tax_decision === 'no_tax' ? false : undefined;
             const check = NexusGuard.checkNexus(
