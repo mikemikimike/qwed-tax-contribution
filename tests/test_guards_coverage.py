@@ -154,7 +154,7 @@ class TestFinancialGuardNumericSafety:
 
     def test_nexus_blocks_invalid_sales_amount(self):
         guard = NexusGuard()
-        res = guard.check_nexus_liability("CA", "pending", 5, "no_tax")
+        res = guard.check_nexus_liability("CA", "pending", 5, claimed_collects_tax=False)
         assert res["verified"] is False
         assert res["error"] == "ytd_sales must be a numeric value."
 
@@ -447,12 +447,36 @@ class TestTaxPreFlightAudit:
                 "action": "economic_nexus",
                 "state": "NY",
                 "sales_data": {"amount": 500001, "transactions": 10},
-                "tax_decision": "no_tax",
+                "claimed_collects_tax": False,
             }
         )
         assert report["allowed"] is False
         assert report["checks_run"] == ["economic_nexus"]
         assert "Nexus Violation" in report["blocks"][0]
+
+    def test_nexus_requires_structured_claim(self):
+        """Free-text LLM output must not be treated as a verified claim."""
+        guard = NexusGuard()
+        result = guard.check_nexus_liability("CA", 900000, 0, "tax collection is not required")
+        assert result["verified"] is False
+        assert result["computed_only"] is True
+        assert result["has_nexus"] is True
+
+    def test_nexus_verifies_explicit_boolean_claim(self):
+        guard = NexusGuard()
+        result = guard.check_nexus_liability("CA", 900000, 0, claimed_collects_tax=True)
+        assert result == {
+            "verified": True,
+            "has_nexus": True,
+            "claimed_collects_tax": True,
+            "error": None,
+        }
+
+    def test_nexus_rejects_mismatched_boolean_claim(self):
+        guard = NexusGuard()
+        result = guard.check_nexus_liability("CA", 100, 0, claimed_collects_tax=True)
+        assert result["verified"] is False
+        assert "claim mismatch" in result["error"]
 
     def test_trade_tax_setoff_runs_and_blocks_illegal_offset(self):
         """Trade tax set-off claims should block speculative loss misuse."""
@@ -674,7 +698,7 @@ class TestIssue16FailClosedUnknownRules:
     def test_nexus_known_state_still_passes(self):
         """Known state with no nexus violation must still pass — no regression."""
         guard = NexusGuard()
-        res = guard.check_nexus_liability("CA", 100, 0, "no_tax")
+        res = guard.check_nexus_liability("CA", 100, 0, claimed_collects_tax=False)
         assert res["verified"] is True
 
     def test_address_unknown_state_blocks(self):

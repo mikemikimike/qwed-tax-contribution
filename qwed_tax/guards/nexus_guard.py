@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Dict, Any
+from typing import Any, Dict, Optional
 
 from qwed_tax.numeric import decimal_text, parse_decimal_input
 
@@ -22,9 +22,22 @@ class NexusGuard:
             "GA": {"amount": Decimal("100000"), "transactions": 200},
         }
 
-    def check_nexus_liability(self, state: str, ytd_sales: Any, transaction_count: int, llm_decision: str) -> Dict[str, Any]:
+    def check_nexus_liability(
+        self,
+        state: str,
+        ytd_sales: Any,
+        transaction_count: int,
+        llm_decision: Optional[str] = None,
+        *,
+        claimed_collects_tax: Optional[bool] = None,
+    ) -> Dict[str, Any]:
         """
-        Verifies if the AI correctly identified that we need to pay tax in this state.
+        Verify an explicit tax-collection claim against the computed nexus.
+
+        ``llm_decision`` is retained for positional compatibility but is no
+        longer interpreted: free-form model output cannot be a verification
+        substrate. Callers must provide ``claimed_collects_tax`` to obtain a
+        verified result; otherwise this method returns a computed-only result.
         """
         state_code = state.upper()
         if state_code not in self.state_thresholds:
@@ -45,20 +58,37 @@ class NexusGuard:
         
         has_nexus = amount_crossed or tx_crossed
 
-        # If AI says "No Tax" but we crossed the threshold -> BLOCK
-        decision_normalized = llm_decision.lower().replace(" ", "_")
-        if has_nexus and (decision_normalized == "no_tax" or decision_normalized == "exempt"):
-            reason = []
-            if amount_crossed:
-                reason.append(
-                    f"YTD Sales ${decimal_text(parsed_sales)} >= ${decimal_text(threshold['amount'])}"
-                )
-            if tx_crossed:
-                reason.append(f"Transactions {transaction_count} >= {threshold['transactions']}")
-                
+        reason = []
+        if amount_crossed:
+            reason.append(
+                f"YTD Sales ${decimal_text(parsed_sales)} >= ${decimal_text(threshold['amount'])}"
+            )
+        if tx_crossed:
+            reason.append(f"Transactions {transaction_count} >= {threshold['transactions']}")
+
+        if claimed_collects_tax is None:
             return {
                 "verified": False,
-                "error": f"Nexus Violation: {state_code} threshold exceeded ({', '.join(reason)}). Tax collection is mandatory."
+                "computed_only": True,
+                "has_nexus": has_nexus,
+                "error": "Computed nexus liability only. Provide claimed_collects_tax as a boolean for deterministic verification.",
             }
-            
-        return {"verified": True}
+
+        if not isinstance(claimed_collects_tax, bool):
+            return {
+                "verified": False,
+                "has_nexus": has_nexus,
+                "error": "Invalid claimed_collects_tax. Expected a boolean true/false for deterministic verification.",
+            }
+
+        verified = claimed_collects_tax is has_nexus
+        return {
+            "verified": verified,
+            "has_nexus": has_nexus,
+            "claimed_collects_tax": claimed_collects_tax,
+            "error": None if verified else (
+                f"Nexus Violation: {state_code} threshold exceeded ({', '.join(reason)}). Tax collection is mandatory."
+                if has_nexus
+                else f"Nexus claim mismatch: {state_code} is below its configured threshold, but tax collection was claimed."
+            ),
+        }
