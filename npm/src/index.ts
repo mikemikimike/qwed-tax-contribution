@@ -26,13 +26,25 @@ export class NexusGuard {
         "FL": { amount: 100000, transactions: 0 }
     };
 
-    static checkNexus(state: string, ytdSales: number, transactions: number = 0): { verified: boolean; error?: string } {
+    static checkNexus(state: string, ytdSales: number, transactions: number = 0, claimedCollectsTax?: unknown): { verified: boolean; error?: string } {
         const t = this.thresholds[state.toUpperCase()];
         if (!t) return { verified: true }; // Unknown state, pass
 
-        const hit = ytdSales >= t.amount || transactions >= t.transactions;
-        if (hit) {
-            return { verified: false, error: `Nexus threshold exceeded in ${state}. Registration required.` };
+        const hit = ytdSales >= t.amount || (t.transactions > 0 && transactions >= t.transactions);
+        if (typeof claimedCollectsTax !== 'boolean') {
+            return {
+                verified: false,
+                error: "Computed nexus liability only. Provide claimed_collects_tax as a boolean for deterministic verification."
+            };
+        }
+
+        if (claimedCollectsTax !== hit) {
+            return {
+                verified: false,
+                error: hit
+                    ? `Nexus threshold exceeded in ${state}. Registration required.`
+                    : `Nexus claim mismatch: ${state} is below its configured threshold, but tax collection was claimed.`
+            };
         }
         return { verified: true };
     }
@@ -56,11 +68,16 @@ export class TaxPreFlight {
 
         // 2. Nexus
         if (intent.sales_data && intent.state) {
-            const check = NexusGuard.checkNexus(intent.state, intent.sales_data.amount, intent.sales_data.transactions);
-            const claimsNoTax = typeof intent.claimed_collects_tax === 'boolean'
-                ? !intent.claimed_collects_tax
-                : intent.tax_decision === 'no_tax';
-            if (!check.verified && claimsNoTax) {
+            const claimedCollectsTax = typeof intent.claimed_collects_tax === 'boolean'
+                ? intent.claimed_collects_tax
+                : intent.tax_decision === 'no_tax' ? false : undefined;
+            const check = NexusGuard.checkNexus(
+                intent.state,
+                intent.sales_data.amount,
+                intent.sales_data.transactions,
+                claimedCollectsTax
+            );
+            if (!check.verified) {
                 blocks.push(check.error!);
             }
         }
