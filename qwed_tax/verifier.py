@@ -62,7 +62,7 @@ class TaxPreFlight:
                     "state",
                     "sales_data.amount",
                     "sales_data.transactions",
-                    "tax_decision",
+                    "claimed_collects_tax",
                 ),
                 "handler": "_check_economic_nexus",
             }
@@ -277,7 +277,7 @@ class TaxPreFlight:
             intent["state"],
             intent["sales_data"]["amount"],
             intent["sales_data"]["transactions"],
-            intent["tax_decision"],
+            claimed_collects_tax=intent["claimed_collects_tax"],
         )
         if not nexus_check["verified"]:
             report["allowed"] = False

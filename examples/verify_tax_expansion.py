@@ -65,7 +65,7 @@ def test_nexus_guard():
         "action": "economic_nexus",
         "state": "NY",
         "sales_data": {"amount": 500001, "transactions": 10},
-        "tax_decision": "no_tax",  # hallucination
+        "claimed_collects_tax": False,  # hallucination
     }
 
     report = verifier.audit_transaction(intent_nexus)
@@ -81,7 +81,7 @@ def test_nexus_guard():
         "action": "economic_nexus",
         "state": "FL",
         "sales_data": {"amount": 50000, "transactions": 10},
-        "tax_decision": "no_tax",
+        "claimed_collects_tax": False,
     }
     report2 = verifier.audit_transaction(intent_safe)
     _print_outcome(
