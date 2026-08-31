@@ -39,6 +39,11 @@ class NexusGuard:
         substrate. Callers must provide ``claimed_collects_tax`` to obtain a
         verified result; otherwise this method returns a computed-only result.
         """
+        if not isinstance(state, str):
+            return {
+                "verified": False,
+                "error": "state must be a string.",
+            }
         state_code = state.upper()
         if state_code not in self.state_thresholds:
             return {

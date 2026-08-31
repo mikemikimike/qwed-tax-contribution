@@ -164,3 +164,25 @@ test('blocks a non-string state instead of crashing', () => {
     assert.equal(result.allowed, false);
     assert.match(result.blocks[0], /state must be a string/);
 });
+
+test('does not let an empty-string state skip nexus validation', () => {
+    const result = TaxPreFlight.audit({
+        state: '',
+        sales_data: { amount: 600000, transactions: 0 },
+        claimed_collects_tax: false,
+    });
+
+    assert.equal(result.allowed, false);
+    assert.match(result.blocks[0], /not in configured nexus threshold table/);
+});
+
+test('does not let a null state skip nexus validation', () => {
+    const result = TaxPreFlight.audit({
+        state: null,
+        sales_data: { amount: 600000, transactions: 0 },
+        claimed_collects_tax: false,
+    });
+
+    assert.equal(result.allowed, false);
+    assert.match(result.blocks[0], /state must be a string/);
+});

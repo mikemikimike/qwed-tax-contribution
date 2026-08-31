@@ -107,8 +107,9 @@ export class TaxPreFlight {
             }
         }
 
-        // 2. Nexus
-        if (intent.sales_data && intent.state) {
+        // 2. Nexus — run whenever sales data is present; falsy states must
+        // reach the guard and fail closed, not skip validation.
+        if (intent.sales_data) {
             const hasStructuredClaim = Object.prototype.hasOwnProperty.call(intent, 'claimed_collects_tax');
             const claimedCollectsTax = hasStructuredClaim
                 ? intent.claimed_collects_tax
