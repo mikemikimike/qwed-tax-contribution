@@ -57,7 +57,10 @@ export class TaxPreFlight {
         // 2. Nexus
         if (intent.sales_data && intent.state) {
             const check = NexusGuard.checkNexus(intent.state, intent.sales_data.amount, intent.sales_data.transactions);
-            if (!check.verified && intent.tax_decision === 'no_tax') {
+            const claimsNoTax = typeof intent.claimed_collects_tax === 'boolean'
+                ? !intent.claimed_collects_tax
+                : intent.tax_decision === 'no_tax';
+            if (!check.verified && claimsNoTax) {
                 blocks.push(check.error!);
             }
         }
