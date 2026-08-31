@@ -50,6 +50,11 @@ class NexusGuard:
             parsed_sales = parse_decimal_input(ytd_sales, "ytd_sales")
         except ValueError as exc:
             return {"verified": False, "error": str(exc)}
+        if parsed_sales < 0:
+            return {
+                "verified": False,
+                "error": "ytd_sales must be a non-negative numeric value.",
+            }
         threshold = self.state_thresholds[state_code]
         
         # Check if threshold crossed

@@ -27,6 +27,12 @@ export class NexusGuard {
     };
 
     static checkNexus(state: string, ytdSales: number, transactions: number = 0, claimedCollectsTax?: unknown): { verified: boolean; error?: string } {
+        if (typeof state !== 'string') {
+            return {
+                verified: false,
+                error: "state must be a string."
+            };
+        }
         const stateCode = state.toUpperCase();
         const t = this.thresholds[stateCode];
         if (!t) {
@@ -48,6 +54,20 @@ export class NexusGuard {
             return {
                 verified: false,
                 error: "transactions must be a finite numeric value."
+            };
+        }
+        // Negative sales are malformed facts, not "below threshold" — reject
+        // them explicitly, matching the other guards' non-negative pattern.
+        if (ytdSales < 0) {
+            return {
+                verified: false,
+                error: "ytd_sales must be a non-negative numeric value."
+            };
+        }
+        if (transactions < 0) {
+            return {
+                verified: false,
+                error: "transactions must be a non-negative numeric value."
             };
         }
 

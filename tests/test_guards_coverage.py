@@ -158,6 +158,12 @@ class TestFinancialGuardNumericSafety:
         assert res["verified"] is False
         assert res["error"] == "ytd_sales must be a numeric value."
 
+    def test_nexus_blocks_negative_sales_amount(self):
+        guard = NexusGuard()
+        res = guard.check_nexus_liability("CA", -5000, 0, claimed_collects_tax=False)
+        assert res["verified"] is False
+        assert res["error"] == "ytd_sales must be a non-negative numeric value."
+
     def test_related_party_accepts_decimal_string_rates(self):
         guard = RelatedPartyGuard()
         res = guard.verify_loan_compliance("company", "employee", "8.25", "8.00")

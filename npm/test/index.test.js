@@ -131,3 +131,36 @@ test('blocks a non-numeric sales amount', () => {
     assert.equal(result.allowed, false);
     assert.match(result.blocks[0], /ytd_sales must be a finite numeric value/);
 });
+
+test('blocks a negative sales amount instead of reading it as below-threshold', () => {
+    const result = TaxPreFlight.audit({
+        state: 'CA',
+        sales_data: { amount: -5000, transactions: 0 },
+        claimed_collects_tax: false,
+    });
+
+    assert.equal(result.allowed, false);
+    assert.match(result.blocks[0], /ytd_sales must be a non-negative numeric value/);
+});
+
+test('blocks negative transactions', () => {
+    const result = TaxPreFlight.audit({
+        state: 'NY',
+        sales_data: { amount: 100, transactions: -3 },
+        claimed_collects_tax: false,
+    });
+
+    assert.equal(result.allowed, false);
+    assert.match(result.blocks[0], /transactions must be a non-negative numeric value/);
+});
+
+test('blocks a non-string state instead of crashing', () => {
+    const result = TaxPreFlight.audit({
+        state: 42,
+        sales_data: { amount: 100, transactions: 0 },
+        claimed_collects_tax: false,
+    });
+
+    assert.equal(result.allowed, false);
+    assert.match(result.blocks[0], /state must be a string/);
+});
