@@ -36,6 +36,21 @@ export class NexusGuard {
             };
         }
 
+        // NaN >= threshold is false, so non-finite sales would silently read
+        // as below-threshold. Fail closed, matching the Python guard.
+        if (typeof ytdSales !== 'number' || !Number.isFinite(ytdSales)) {
+            return {
+                verified: false,
+                error: "ytd_sales must be a finite numeric value."
+            };
+        }
+        if (typeof transactions !== 'number' || !Number.isFinite(transactions)) {
+            return {
+                verified: false,
+                error: "transactions must be a finite numeric value."
+            };
+        }
+
         const hit = ytdSales >= t.amount || (t.transactions > 0 && transactions >= t.transactions);
         if (typeof claimedCollectsTax !== 'boolean') {
             return {

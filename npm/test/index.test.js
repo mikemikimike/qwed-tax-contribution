@@ -87,3 +87,47 @@ test('blocks an unknown state instead of treating it as verified', () => {
     assert.equal(result.allowed, false);
     assert.match(result.blocks[0], /not in configured nexus threshold table/);
 });
+
+test('blocks a NaN sales amount instead of reading it as below-threshold', () => {
+    const result = TaxPreFlight.audit({
+        state: 'CA',
+        sales_data: { amount: NaN, transactions: 0 },
+        claimed_collects_tax: false,
+    });
+
+    assert.equal(result.allowed, false);
+    assert.match(result.blocks[0], /ytd_sales must be a finite numeric value/);
+});
+
+test('blocks NaN transactions on a transaction-threshold state', () => {
+    const result = TaxPreFlight.audit({
+        state: 'NY',
+        sales_data: { amount: 100, transactions: NaN },
+        claimed_collects_tax: false,
+    });
+
+    assert.equal(result.allowed, false);
+    assert.match(result.blocks[0], /transactions must be a finite numeric value/);
+});
+
+test('blocks an infinite sales amount', () => {
+    const result = TaxPreFlight.audit({
+        state: 'CA',
+        sales_data: { amount: Infinity, transactions: 0 },
+        claimed_collects_tax: true,
+    });
+
+    assert.equal(result.allowed, false);
+    assert.match(result.blocks[0], /ytd_sales must be a finite numeric value/);
+});
+
+test('blocks a non-numeric sales amount', () => {
+    const result = TaxPreFlight.audit({
+        state: 'CA',
+        sales_data: { amount: '100000', transactions: 0 },
+        claimed_collects_tax: false,
+    });
+
+    assert.equal(result.allowed, false);
+    assert.match(result.blocks[0], /ytd_sales must be a finite numeric value/);
+});
