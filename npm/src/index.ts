@@ -107,13 +107,12 @@ export class TaxPreFlight {
             }
         }
 
-        // 2. Nexus — run whenever sales data is provided; falsy or
-        // non-object values must fail closed, not skip validation
-        // (Greptile P1 on #65). Only a genuinely absent field means
-        // "no nexus facts to check".
-        const hasSalesData =
-            Object.prototype.hasOwnProperty.call(intent, 'sales_data') &&
-            intent.sales_data !== undefined;
+        // 2. Nexus — run whenever sales data is provided; falsy, undefined,
+        // or non-object values must fail closed, not skip validation
+        // (Greptile review on #65). Presence is hasOwnProperty-only — the
+        // same semantics the structured claim below uses, so an explicit
+        // `sales_data: undefined` is malformed input, not an absent field.
+        const hasSalesData = Object.prototype.hasOwnProperty.call(intent, 'sales_data');
         if (hasSalesData) {
             const salesData = intent.sales_data;
             if (typeof salesData !== 'object' || salesData === null || Array.isArray(salesData)) {

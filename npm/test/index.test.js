@@ -243,6 +243,17 @@ test('blocks array sales_data instead of skipping nexus validation', () => {
     assert.match(result.blocks[0], /sales_data must be an object/);
 });
 
+test('blocks explicit undefined sales_data instead of skipping nexus validation', () => {
+    const result = TaxPreFlight.audit({
+        state: 'NY',
+        sales_data: undefined,
+        tax_decision: 'no_tax',
+    });
+
+    assert.equal(result.allowed, false);
+    assert.match(result.blocks[0], /sales_data must be an object/);
+});
+
 test('skips nexus when sales_data is not provided', () => {
     const result = TaxPreFlight.audit({
         state: 'NY',
