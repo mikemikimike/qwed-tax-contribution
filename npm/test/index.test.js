@@ -186,3 +186,69 @@ test('does not let a null state skip nexus validation', () => {
     assert.equal(result.allowed, false);
     assert.match(result.blocks[0], /state must be a string/);
 });
+
+// Falsy-but-present sales_data must fail closed, not skip validation.
+test('blocks null sales_data instead of skipping nexus validation', () => {
+    const result = TaxPreFlight.audit({
+        state: 'NY',
+        sales_data: null,
+        claimed_collects_tax: false,
+    });
+
+    assert.equal(result.allowed, false);
+    assert.match(result.blocks[0], /sales_data must be an object/);
+});
+
+test('blocks false sales_data instead of skipping nexus validation', () => {
+    const result = TaxPreFlight.audit({
+        state: 'NY',
+        sales_data: false,
+        claimed_collects_tax: false,
+    });
+
+    assert.equal(result.allowed, false);
+    assert.match(result.blocks[0], /sales_data must be an object/);
+});
+
+test('blocks zero sales_data instead of skipping nexus validation', () => {
+    const result = TaxPreFlight.audit({
+        state: 'NY',
+        sales_data: 0,
+        claimed_collects_tax: false,
+    });
+
+    assert.equal(result.allowed, false);
+    assert.match(result.blocks[0], /sales_data must be an object/);
+});
+
+test('blocks empty-string sales_data instead of skipping nexus validation', () => {
+    const result = TaxPreFlight.audit({
+        state: 'NY',
+        sales_data: '',
+        claimed_collects_tax: false,
+    });
+
+    assert.equal(result.allowed, false);
+    assert.match(result.blocks[0], /sales_data must be an object/);
+});
+
+test('blocks array sales_data instead of skipping nexus validation', () => {
+    const result = TaxPreFlight.audit({
+        state: 'NY',
+        sales_data: [{ amount: 600000, transactions: 0 }],
+        claimed_collects_tax: false,
+    });
+
+    assert.equal(result.allowed, false);
+    assert.match(result.blocks[0], /sales_data must be an object/);
+});
+
+test('skips nexus when sales_data is not provided', () => {
+    const result = TaxPreFlight.audit({
+        state: 'NY',
+        claimed_collects_tax: false,
+    });
+
+    assert.equal(result.allowed, true);
+    assert.deepEqual(result.blocks, []);
+});

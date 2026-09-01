@@ -1,5 +1,6 @@
 from decimal import Decimal
-from typing import Any, Dict, Optional
+import math
+from typing import Any, Dict, Optional, Union
 
 from qwed_tax.numeric import decimal_text, parse_decimal_input
 
@@ -26,7 +27,7 @@ class NexusGuard:
         self,
         state: str,
         ytd_sales: Any,
-        transaction_count: int,
+        transaction_count: Union[int, float],
         llm_decision: Optional[str] = None,
         *,
         claimed_collects_tax: Optional[bool] = None,
@@ -59,6 +60,25 @@ class NexusGuard:
             return {
                 "verified": False,
                 "error": "ytd_sales must be a non-negative numeric value.",
+            }
+        # transaction_count must be a finite non-negative number — a
+        # negative count is a malformed fact, not "below threshold"
+        # (Sentry review on #65). Non-numeric values previously raised
+        # an unhandled TypeError at the threshold comparison.
+        if isinstance(transaction_count, bool) or not isinstance(transaction_count, (int, float)):
+            return {
+                "verified": False,
+                "error": "transaction_count must be a numeric value.",
+            }
+        if not math.isfinite(transaction_count):
+            return {
+                "verified": False,
+                "error": "transaction_count must be a finite numeric value.",
+            }
+        if transaction_count < 0:
+            return {
+                "verified": False,
+                "error": "transaction_count must be a non-negative numeric value.",
             }
         threshold = self.state_thresholds[state_code]
         

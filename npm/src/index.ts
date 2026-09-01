@@ -107,21 +107,31 @@ export class TaxPreFlight {
             }
         }
 
-        // 2. Nexus — run whenever sales data is present; falsy states must
-        // reach the guard and fail closed, not skip validation.
-        if (intent.sales_data) {
-            const hasStructuredClaim = Object.prototype.hasOwnProperty.call(intent, 'claimed_collects_tax');
-            const claimedCollectsTax = hasStructuredClaim
-                ? intent.claimed_collects_tax
-                : intent.tax_decision === 'no_tax' ? false : undefined;
-            const check = NexusGuard.checkNexus(
-                intent.state,
-                intent.sales_data.amount,
-                intent.sales_data.transactions,
-                claimedCollectsTax
-            );
-            if (!check.verified) {
-                blocks.push(check.error!);
+        // 2. Nexus — run whenever sales data is provided; falsy or
+        // non-object values must fail closed, not skip validation
+        // (Greptile P1 on #65). Only a genuinely absent field means
+        // "no nexus facts to check".
+        const hasSalesData =
+            Object.prototype.hasOwnProperty.call(intent, 'sales_data') &&
+            intent.sales_data !== undefined;
+        if (hasSalesData) {
+            const salesData = intent.sales_data;
+            if (typeof salesData !== 'object' || salesData === null || Array.isArray(salesData)) {
+                blocks.push('sales_data must be an object with numeric amount and transactions fields.');
+            } else {
+                const hasStructuredClaim = Object.prototype.hasOwnProperty.call(intent, 'claimed_collects_tax');
+                const claimedCollectsTax = hasStructuredClaim
+                    ? intent.claimed_collects_tax
+                    : intent.tax_decision === 'no_tax' ? false : undefined;
+                const check = NexusGuard.checkNexus(
+                    intent.state,
+                    salesData.amount,
+                    salesData.transactions,
+                    claimedCollectsTax
+                );
+                if (!check.verified) {
+                    blocks.push(check.error!);
+                }
             }
         }
 
